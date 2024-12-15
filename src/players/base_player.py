@@ -56,7 +56,7 @@ class BasePlayer(ABC):
         return random.choice(candidates) if candidates else None
 
     @abstractmethod
-    async def take_action(self, game_state: 'GameState') -> Dict:
+    def take_action(self, game_state: 'GameState') -> Dict:
         """
         게임 상태를 기반으로 플레이어의 행동을 결정하고 수행
         
@@ -68,10 +68,10 @@ class BasePlayer(ABC):
         """
         raise NotImplementedError
 
-    async def discuss(self, game_state: 'GameState') -> Dict:
+    def discuss(self, game_state: 'GameState') -> Dict:
         """낮 페이즈 대화 수행"""
         context = self.memory.get_relevant_memories(game_state)
-        message = await self.ai_agent.generate_response(context)
+        message = self.ai_agent.generate_response(context)
         
         result = {
             "success": True,
@@ -86,7 +86,7 @@ class BasePlayer(ABC):
         
         return result
 
-    async def vote(self, candidates) -> str:
+    def vote(self, candidates) -> str:
         """투표 진행"""
         if not candidates:
             return ""
@@ -98,7 +98,7 @@ class BasePlayer(ABC):
             "memories": self.memory.get_relevant_memories(None)
         }
         
-        vote_target = await self.ai_agent.generate_response(context)
+        vote_target = self.ai_agent.generate_response(context)
         
         # 유효한 투표 대상 확인
         for candidate in candidates:

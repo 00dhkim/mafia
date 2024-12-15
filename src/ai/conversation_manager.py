@@ -6,7 +6,7 @@ class ConversationManager:
         self.conversation_history: List[Dict] = []
         self.current_speaker = None
         
-    async def generate_conversation(self, context: str, speaker: LLMAgent) -> str:
+    def generate_conversation(self, context: str, speaker: LLMAgent) -> str:
         """대화 생성"""
         pass
         
@@ -16,4 +16,9 @@ class ConversationManager:
         
     def get_recent_conversations(self, n: int = 5) -> List[Dict]:
         """최근 대화 내역 조회"""
-        pass 
+        pass
+        
+    def _get_timestamp(self) -> str:
+        """현재 시간 반환"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")

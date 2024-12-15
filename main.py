@@ -1,10 +1,12 @@
-import asyncio
+from dotenv import load_dotenv
 from src.game.game_manager import GameManager
 
-async def main():
+def main():
+    load_dotenv()
+
     game = GameManager()
     game.initialize_game()
-    await game.run_game()
+    game.run_game()
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    main() 

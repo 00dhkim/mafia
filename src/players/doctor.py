@@ -7,7 +7,7 @@ class Doctor(BasePlayer):
         super().__init__(name)
         self.role = "의사"
         
-    async def take_action(self, game_state: GameState) -> Dict:
+    def take_action(self, game_state: GameState) -> Dict:
         """의사의 밤 행동 수행"""
         if game_state.current_phase != GamePhase.NIGHT:
             return {"success": False, "message": "밤이 아닙니다"}
@@ -19,7 +19,7 @@ class Doctor(BasePlayer):
             "memories": self.memory.get_relevant_memories(game_state)
         }
         
-        target_name = await self.ai_agent.generate_response(context)
+        target_name = self.ai_agent.generate_response(context)
         target = self._validate_and_get_target(
             target_name=target_name,
             candidates=game_state.alive_players,

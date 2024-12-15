@@ -1,15 +1,14 @@
 {
-    "game_settings": {
-        "total_players": 7,
-        "mafia_count": 2,
-        "doctor_count": 1,
-        "police_count": 1,
-        "citizen_count": 3
+    "roles": {
+        "mafia": 1,
+        "doctor": 1,
+        "police": 1,
+        "citizen": 1
     },
-    "turn_settings": {
-        "day_phase_time": 300,
-        "night_phase_time": 180,
-        "vote_time": 60
+    "game_settings": {
+        "day_time_limit": 300,
+        "night_time_limit": 60,
+        "vote_time_limit": 60
     },
     "ai_settings": {
         "model": "gpt-3.5-turbo",

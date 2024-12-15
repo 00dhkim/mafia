@@ -7,11 +7,11 @@ class Citizen(BasePlayer):
         super().__init__(name)
         self.role = "시민"
         
-    async def take_action(self, game_state: GameState) -> Dict:
+    def take_action(self, game_state: GameState) -> Dict:
         """시민의 전체 의사결정 프로세스"""
         # 시민은 특별한 행동이 없으므로, 대화만 수행
         context = self.memory.get_relevant_memories(game_state)
-        message = await self.ai_agent.generate_response(context)
+        message = self.ai_agent.generate_response(context)
         
         result = {
             "success": True,

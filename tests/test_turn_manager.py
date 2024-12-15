@@ -15,26 +15,23 @@ def game_setup():
     manager = TurnManager(state)
     return state, manager
 
-@pytest.mark.asyncio
-async def test_day_phase(game_setup):
+def test_day_phase(game_setup):
     state, manager = game_setup
     
-    await manager.run_day_phase()
+    manager.run_day_phase()
     assert state.current_phase == GamePhase.VOTING
     
     # 투표 결과 확인
     assert isinstance(state.vote_results, dict)
 
-@pytest.mark.asyncio
-async def test_night_phase(game_setup):
+def test_night_phase(game_setup):
     state, manager = game_setup
     initial_alive_count = len(state.alive_players)
     
-    await manager.run_night_phase()
+    manager.run_night_phase()
     assert state.current_phase == GamePhase.NIGHT
 
-@pytest.mark.asyncio
-async def test_handle_death(game_setup):
+def test_handle_death(game_setup):
     state, manager = game_setup
     player = state.alive_players[0]
     initial_alive_count = len(state.alive_players)

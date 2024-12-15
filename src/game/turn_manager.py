@@ -19,37 +19,37 @@ class TurnManager:
         # 2. 플레이어 간 대화
         for player in self.game_state.alive_players:
             # 낮에는 모든 플레이어가 대화에 참여
-            await player.discuss(self.game_state)
+            player.discuss(self.game_state)
             
         # 3. 투표 진행
-        await self._handle_voting()
+        self._handle_voting()
         
-    async def run_night_phase(self):
+    def run_night_phase(self):
         """밤 페이즈 진행"""
         self.game_state.update_state(GamePhase.NIGHT)
         
         # 1. 마피아 행동
         for player in self.game_state.alive_players:
             if player.role == "마피아":
-                await player.take_action(self.game_state)
+                player.take_action(self.game_state)
                 
         # 2. 의사 행동
         for player in self.game_state.alive_players:
             if player.role == "의사":
-                await player.take_action(self.game_state)
+                player.take_action(self.game_state)
                 
         # 3. 경찰 행동
         for player in self.game_state.alive_players:
             if player.role == "경찰":
-                await player.take_action(self.game_state)
+                player.take_action(self.game_state)
     
-    async def _handle_voting(self):
+    def _handle_voting(self):
         """투표 진행 및 결과 처리"""
         self.game_state.update_state(GamePhase.VOTING)
         
         # 투표 진행
         for player in self.game_state.alive_players:
-            vote = await player.vote(self.game_state.alive_players)
+            vote = player.vote(self.game_state.alive_players)
             self.game_state.vote_results[player.name] = vote
             
         # 투표 결과 집계

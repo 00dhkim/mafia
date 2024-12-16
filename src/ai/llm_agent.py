@@ -2,25 +2,37 @@ from typing import List, Dict, Optional
 import openai
 from .memory_manager import MemoryManager
 import random
+from .utils.config import GameConfig
 
 class LLMAgent:
-    def __init__(self, player_id: str, role: str, config: Dict = None):
+    """AI 플레이어 에이전트
+    
+    PRD 요구사항:
+    - 독립적인 LLM 에이전트로 구현
+    - 게임 상황 인식 및 의사결정 능력
+    - 역할에 따른 적절한 행동 선택
+    - 자연스러운 대화 생성 기능
+    - 거짓말 탐지 및 수행 능력 (마피아 역할)
+    
+    주요 기능:
+    1. 게임 상황 분석 및 의사결정
+    2. 대화 생성 및 관리
+    3. 역할별 특수 능력 사용
+    4. 투표 결정
+    """
+    def __init__(self, player_id: str, memory_manager: MemoryManager, role: str):
         self.player_id = player_id
         self.role = role
+        self.memory_manager = memory_manager
         self.is_alive = True
-        self.memory_manager = MemoryManager()
         self.conversation_history = []
         self.game_knowledge = {
             "known_roles": {},  # 확인된 다른 플레이어의 역할
             "suspicious_players": [],  # 의심스러운 플레이어 목록
             "trusted_players": []  # 신뢰할 수 있는 플레이어 목록
         }
-        # AI 설정 추가
-        self.ai_config = config.get('ai_settings', {
-            "model": "gpt-3.5-turbo",
-            "temperature": 0.7,
-            "max_tokens": 150
-        })
+        # 전역 설정에서 AI 설정 가져오기
+        self.ai_config = GameConfig().config["ai_settings"]
 
     def generate_response(self, context: Dict) -> Dict:
         """LLM을 사용하여 응답 생성"""
@@ -397,3 +409,30 @@ class LLMAgent:
                 "dialogue": "죄송합니다. 기술적인 문제가 발생했습니다."
             }
         }
+
+    def generate_conversation(self, context: Dict) -> str:
+        """대화 생성
+        
+        Args:
+            context: 현재 게임 상태 및 대화 컨텍스트
+            
+        Returns:
+            생성된 대화 내용
+        """
+        try:
+            # AI 응답 생성
+            response = self.generate_response(context)
+            if response.get("type") == "game_action" and response["content"].get("dialogue"):
+                # 대화 내용을 메모리에 저장 (직접 경험)
+                self.memory_manager.add_memory({
+                    "type": MemoryType.CONVERSATION,
+                    "content": response["content"]["dialogue"],
+                    "turn": context.get("turn"),
+                    "phase": context.get("phase"),
+                    "players": [self.player_id],
+                    "source": "direct_experience"
+                })
+                return response["content"]["dialogue"]
+            return ""
+        except Exception as e:
+            return "죄송합니다. 대화 생성 중 오류가 발생했습니다."

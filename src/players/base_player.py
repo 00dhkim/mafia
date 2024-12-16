@@ -8,13 +8,30 @@ import logging
 T = TypeVar('T')
 
 class BasePlayer(ABC):
+    """플레이어 기본 클래스
+    
+    PRD 요구사항:
+    - 각 역할별 특수 능력 구현
+    - AI 에이전트와의 연동
+    - 개별 메모리 관리
+    
+    주요 기능:
+    1. 기본 플레이어 상태 관리 (생존 여부 등)
+    2. AI 에이전트를 통한 의사결정
+    3. 행동 검증 및 실행
+    4. 대화 및 투표 참여
+    """
     def __init__(self, name: str):
         self.name = name
         self.is_alive = True
         self.is_healed = False
         self.role = None
-        self.ai_agent = LLMAgent()
-        self.memory = MemoryManager()
+        self.memory_manager = MemoryManager(owner_id=name)
+        self.ai_agent = LLMAgent(
+            player_id=name, 
+            memory_manager=self.memory_manager,
+            role=self.role
+        )
         self.logger = logging.getLogger(__name__)
 
     def _validate_and_get_target(
@@ -70,7 +87,7 @@ class BasePlayer(ABC):
 
     def discuss(self, game_state: 'GameState') -> Dict:
         """낮 페이즈 대화 수행"""
-        context = self.memory.get_relevant_memories(game_state)
+        context = self.memory_manager.get_relevant_memories(game_state)
         message = self.ai_agent.generate_response(context)
         
         result = {
@@ -78,7 +95,7 @@ class BasePlayer(ABC):
             "message": message
         }
         
-        self.memory.add_memory({
+        self.memory_manager.add_memory({
             "action": "discuss",
             "message": message,
             "turn": game_state.day_count
@@ -95,7 +112,7 @@ class BasePlayer(ABC):
             "role": self.role,
             "phase": "투표",
             "alive_players": [p.name for p in candidates],
-            "memories": self.memory.get_relevant_memories(None)
+            "memories": self.memory_manager.get_relevant_memories(None)
         }
         
         vote_target = self.ai_agent.generate_response(context)
@@ -108,3 +125,7 @@ class BasePlayer(ABC):
         # 유효하지 않은 경우 랜덤 선택
         import random
         return random.choice(candidates).name
+
+    def receive_public_info(self, info: Memory):
+        """공개 정보 수신 및 저장"""
+        self.memory_manager.add_memory(info)

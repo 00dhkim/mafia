@@ -2,6 +2,18 @@ import logging
 from typing import Any
 
 class GameLogger:
+    """게임 로깅 관리자
+    
+    PRD 요구사항:
+    - 게임 진행 상황 기록
+    - 디버깅 및 분석을 위한 로그 관리
+    
+    주요 기능:
+    1. 게임 상태 로깅
+    2. 플레이어 행동 로깅
+    3. AI 응답 로깅
+    4. 에러 및 경고 로깅
+    """
     def __init__(self):
         self.logger = logging.getLogger("mafia_game")
         self._setup_logger()

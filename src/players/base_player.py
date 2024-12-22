@@ -1,9 +1,11 @@
+from ai.llm_agent import LLMAgent
+from ai.memory_manager import MemoryManager
+from utils.enum import Role, ContextType
+from utils.logger import game_logger
+
 from abc import ABC, abstractmethod
-from ..ai.llm_agent import LLMAgent
-from ..ai.memory_manager import MemoryManager
 from typing import Dict, Optional, List, TypeVar, Callable
 import random
-import logging
 
 T = TypeVar('T')
 
@@ -21,18 +23,19 @@ class BasePlayer(ABC):
     3. 행동 검증 및 실행
     4. 대화 및 투표 참여
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, player_id: int, role: Role):
         self.name = name
+        self.player_id = player_id
+        self.role = role
         self.is_alive = True
         self.is_healed = False
-        self.role = None
-        self.memory_manager = MemoryManager(owner_id=name)
+        self.memory_manager = MemoryManager(player_id=name)
         self.ai_agent = LLMAgent(
             player_id=name, 
             memory_manager=self.memory_manager,
             role=self.role
         )
-        self.logger = logging.getLogger(__name__)
+        self.logger = game_logger
 
     def _validate_and_get_target(
         self,
@@ -87,7 +90,11 @@ class BasePlayer(ABC):
 
     def discuss(self, game_state: 'GameState') -> Dict:
         """낮 페이즈 대화 수행"""
-        context = self.memory_manager.get_relevant_memories(game_state)
+        context = ContextType(
+            day_count=game_state.day_count,
+            phase="낮",
+            memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
+        )
         message = self.ai_agent.generate_response(context)
         
         result = {
@@ -103,17 +110,17 @@ class BasePlayer(ABC):
         
         return result
 
-    def vote(self, candidates) -> str:
+    def vote(self, candidates: List[BasePlayer], game_state: 'GameState') -> str:
         """투표 진행"""
         if not candidates:
             return ""
             
-        context = {
-            "role": self.role,
-            "phase": "투표",
-            "alive_players": [p.name for p in candidates],
-            "memories": self.memory_manager.get_relevant_memories(None)
-        }
+        context = ContextType(
+            day_count=game_state.day_count,
+            phase="투표",
+            alive_players=[p.name for p in candidates],
+            memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
+        )
         
         vote_target = self.ai_agent.generate_response(context)
         
@@ -129,3 +136,12 @@ class BasePlayer(ABC):
     def receive_public_info(self, info: Memory):
         """공개 정보 수신 및 저장"""
         self.memory_manager.add_memory(info)
+    
+    def get_context(self) -> ContextType:
+        """현재 게임 상태 및 정보를 반환"""
+        return ContextType(
+            day_count=self.day_count,
+            phase=self.current_phase,
+            alive_players=[p.name for p in self.alive_players],
+            memories=self.memory_manager.get_recent_memories(self.day_count)
+        )

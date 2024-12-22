@@ -59,7 +59,5 @@ class GameConfig:
     def get_config(self, key: str):
         """설정값 조회"""
         return self.config.get(key)
-    
-    def get_roles(self) -> Dict[str, int]:
-        """역할 설정 조회"""
-        return self.config.get("roles", {})
+
+game_config = GameConfig()

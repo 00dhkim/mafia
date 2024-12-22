@@ -1,5 +1,5 @@
 from .base_player import BasePlayer
-from ..game.game_state import GameState, GamePhase
+from utils.enum import GameStateType, GamePhase
 from typing import Dict
 
 class Doctor(BasePlayer):
@@ -7,16 +7,16 @@ class Doctor(BasePlayer):
         super().__init__(name)
         self.role = "의사"
         
-    def take_action(self, game_state: GameState) -> Dict:
+    def take_action(self, game_state: GameStateType) -> Dict:
         """의사의 밤 행동 수행"""
-        if game_state.current_phase != GamePhase.NIGHT:
+        if game_state.current_phase != GamePhase.NIGHT_ACTION:
             return {"success": False, "message": "밤이 아닙니다"}
             
         context = {
             "role": self.role,
             "phase": "밤",
             "alive_players": [p.name for p in game_state.alive_players],
-            "memories": self.memory.get_relevant_memories(game_state)
+            "memories": self.memory_manager.get_recent_memories(game_state.day_count)
         }
         
         target_name = self.ai_agent.generate_response(context)

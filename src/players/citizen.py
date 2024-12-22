@@ -1,5 +1,5 @@
 from .base_player import BasePlayer
-from ..game.game_state import GameState
+from utils.enum import GameStateType
 from typing import Dict
 
 class Citizen(BasePlayer):
@@ -7,10 +7,10 @@ class Citizen(BasePlayer):
         super().__init__(name)
         self.role = "시민"
         
-    def take_action(self, game_state: GameState) -> Dict:
+    def take_action(self, game_state: GameStateType) -> Dict:
         """시민의 전체 의사결정 프로세스"""
         # 시민은 특별한 행동이 없으므로, 대화만 수행
-        context = self.memory.get_relevant_memories(game_state)
+        context = self.memory_manager.get_recent_memories(game_state.day_count)
         message = self.ai_agent.generate_response(context)
         
         result = {

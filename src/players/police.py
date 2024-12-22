@@ -16,7 +16,7 @@ class Police(BasePlayer):
             "role": self.role,
             "phase": "밤",
             "alive_players": [p.name for p in game_state.alive_players if p != self],
-            "memories": self.memory.get_relevant_memories(game_state)
+            "memories": self.memory_manager.get_recent_memories(game_state.day_count)
         }
         
         target_name = self.ai_agent.generate_response(context)

@@ -1,3 +1,7 @@
+"""
+TODO: 로깅은 각 LLM마다 입출력에 대해 저장, 전체 로그도 저장
+"""
+
 import logging
 from typing import Any
 
@@ -29,3 +33,5 @@ class GameLogger:
     def log_player_action(self, player: str, action: str):
         """플레이어 행동 로깅"""
         pass 
+
+game_logger = GameLogger()

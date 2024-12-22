@@ -1,29 +1,38 @@
-mafia_game/
-├── src/
-│   ├── __init__.py
-│   ├── game/
-│   │   ├── __init__.py
-│   │   ├── game_manager.py
-│   │   ├── game_state.py
-│   │   └── turn_manager.py
-│   ├── players/
-│   │   ├── __init__.py
-│   │   ├── base_player.py
-│   │   ├── citizen.py
-│   │   ├── doctor.py
-│   │   ├── police.py
-│   │   └── mafia.py
-│   ├── ai/
-│   │   ├── __init__.py
-│   │   ├── llm_agent.py
-│   │   ├── memory_manager.py
-│   │   └── conversation_manager.py
-│   └── utils/
-│       ├── __init__.py
-│       ├── logger.py
-│       └── config.py
-├── tests/
-│   └── __init__.py
-├── config/
-│   └── game_config.json
-└── main.py 
+mafia
+│  .env
+│  .gitignore
+│  main.py
+│
+├─config
+│      game_config.json
+│
+├─docs
+│      PRD.md
+│      project_structure.txt
+│      RPD_instruction.txt
+│
+├─src
+│  ├─ai
+│  │  │  llm_agent.py
+│  │  │  memory_manager.py
+│  │  │  prompt_builder.py
+│  │
+│  ├─game
+│  │  │  game_manager.py
+│  │
+│  ├─players
+│  │  │  base_player.py
+│  │  │  citizen.py
+│  │  │  doctor.py
+│  │  │  mafia.py
+│  │  │  police.py
+│  │
+│  └─utils
+│          config.py
+│          enum.py
+│          logger.py
+│
+└─tests
+    │  test_game_manager.py
+    │  test_players.py
+    │  __init__.py

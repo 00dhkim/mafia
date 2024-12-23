@@ -145,19 +145,15 @@ class GameManager:
 
     def _handle_death(self, player: BasePlayer, cause: Literal["마피아", "투표"]) -> str:
         """플레이어 사망 처리"""
-        try:
-            assert player is not None, "플레이어가 지정되지 않았습니다."
-            assert player.is_alive, f"이미 사망한 플레이어입니다: {player.name}"
-            assert player in self.alive_players, f"존재하지 않는 플레이어입니다: {player.name}"
+        assert player is not None, "플레이어가 지정되지 않았습니다."
+        assert player.is_alive, f"이미 사망한 플레이어입니다: {player.name}"
+        assert player in self.alive_players, f"존재하지 않는 플레이어입니다: {player.name}"
 
-            player.is_alive = False
-            self.alive_players.remove(player)
-            self.dead_players.append(player)
+        player.is_alive = False
+        self.alive_players.remove(player)
+        self.dead_players.append(player)
 
-            return f"{player.name}이(가) {cause}로 인해 사망했습니다"
-
-        except Exception as e:
-            raise ValueError(f"사망 처리 중 오류 발생: {str(e)}") from e
+        return f"{player.name}이(가) {cause}로 인해 사망했습니다"
 
     def run_day_conversation_phase(self):
         """낮 페이즈 진행
@@ -196,48 +192,37 @@ class GameManager:
 
     def run_day_vote_phase(self):
         """투표 진행 및 결과 처리"""
-        try:
-            # 각 플레이어의 투표 수집
-            for voter in self.alive_players:
-                try:
-                    context = self.get_context(voter)
-                    vote_action = voter.take_action(context)
-                    assert vote_action.get("type") == "vote", f"투표 행동이 아닙니다: {vote_action}"
+        # 각 플레이어의 투표 수집
+        for voter in self.alive_players:
+            context = self.get_context(voter)
+            vote_action = voter.take_action(context)
+            assert vote_action.get("type") == "vote", f"투표 행동이 아닙니다: {vote_action}"
 
-                    if vote_action["target"] in [p.name for p in self.alive_players]:
-                        self.vote_results[voter] = vote_action["target"]
-                    else:
-                        raise ValueError(f"유효하지 않은 투표 대상: {vote_action['target']}")
-                except Exception as e:
-                    raise ValueError(f"투표 처리 중 오류 발생 - {voter.name}: {str(e)}") from e
-                    # 오류 발생 시 랜덤 투표
-                    valid_targets = [p for p in self.alive_players if p.name != voter.name]
-                    if valid_targets:
-                        self.vote_results[voter] = random.choice(valid_targets)
-            self.logger.info(f"투표 결과: {self.vote_results}")
-
-            # 투표 결과 집계
-            assert self.vote_results, "투표 결과가 없습니다."
-            vote_count: Dict[BasePlayer, int] = {}
-            for voted in self.vote_results.values():
-                vote_count[voted] = vote_count.get(voted, 0) + 1
-
-            # 최다 득표자 처리
-            assert vote_count, "투표 결과가 없습니다."
-            max_votes = max(vote_count.values())
-            executed_players = [name for name, votes in vote_count.items() if votes == max_votes]
-
-            if len(executed_players) == 1:
-                executed_player = next(
-                    p for p in self.alive_players if p.name == executed_players[0]
-                )
-                content = self._handle_death(executed_player, "투표")
-                self.announce(content)
+            if vote_action["target"] in [p.name for p in self.alive_players]:
+                self.vote_results[voter] = vote_action["target"]
             else:
-                self.announce("최다 득표자가 동률로 인해 처형되지 않았습니다.")
+                raise ValueError(f"유효하지 않은 투표 대상: {vote_action['target']}")
+        self.logger.info(f"투표 결과: {self.vote_results}")
 
-        except Exception as e:
-            raise ValueError(f"투표 진행 중 치명적 오류 발생: {str(e)}") from e
+        # 투표 결과 집계
+        assert self.vote_results, "투표 결과가 없습니다."
+        vote_count: Dict[BasePlayer, int] = {}
+        for voted in self.vote_results.values():
+            vote_count[voted] = vote_count.get(voted, 0) + 1
+
+        # 최다 득표자 처리
+        assert vote_count, "투표 결과가 없습니다."
+        max_votes = max(vote_count.values())
+        executed_players = [name for name, votes in vote_count.items() if votes == max_votes]
+
+        if len(executed_players) == 1:
+            executed_player = next(
+                p for p in self.alive_players if p.name == executed_players[0]
+            )
+            content = self._handle_death(executed_player, "투표")
+            self.announce(content)
+        else:
+            self.announce("최다 득표자가 동률로 인해 처형되지 않았습니다.")
 
     def run_night_phase(self):
         """밤 페이즈 진행
@@ -261,14 +246,11 @@ class GameManager:
 
         # 행동 결과 처리
         for player, action in actions.items():
-            try:
-                private_memory = self._resolve_night_action(player, action)
-                player.memory_manager.add_memory(private_memory)
-                self.logger.info(
-                    f"사회자 -> {player.name}({player.role}): {private_memory['content']}"
-                )
-            except Exception as e:
-                raise ValueError(f"밤 행동 처리 중 오류 발생: {str(e)}") from e
+            private_memory = self._resolve_night_action(player, action)
+            player.memory_manager.add_memory(private_memory)
+            self.logger.info(
+                f"사회자 -> {player.name}({player.role}): {private_memory['content']}"
+            )
 
     def _resolve_night_action(self, actor: BasePlayer, action: ActionType) -> MemoryType:
         """밤 행동 결과 처리

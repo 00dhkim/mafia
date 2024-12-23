@@ -1,5 +1,8 @@
-import openai
 import random
+import logging
+import os
+
+from openai import OpenAI
 from typing import List, Dict, Optional
 
 from mafia.ai import prompt_builder
@@ -39,6 +42,9 @@ class LLMAgent:
         }
         # 전역 설정에서 AI 설정 가져오기
         self.ai_config = game_config.get_config("ai_settings")
+        self.logger = logging.getLogger("mafia")
+
+        self.llm_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     def generate_response(self, context: ContextType) -> Dict:
         """
@@ -49,136 +55,126 @@ class LLMAgent:
         Returns:
             Dict: 생성된 응답
         """
-        try:
-            # 컨텍스트 구성
-            if context.get("phase") == GamePhase.DAY_CONVERSATION:
-                user_prompt = prompt_builder.day_conversation_prompt(context, self.game_knowledge)
-            elif context.get("phase") == GamePhase.DAY_REASONING:
-                user_prompt = prompt_builder.day_reasoning_prompt(context, self.game_knowledge)
-            elif context.get("phase") == GamePhase.DAY_VOTE:
-                user_prompt = prompt_builder.day_vote_prompt(context, self.game_knowledge)
-            elif context.get("phase") == GamePhase.NIGHT_ACTION:
-                user_prompt = prompt_builder.night_action_prompt(context, self.game_knowledge)
-            else:
-                raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
-
-            # 시스템 메시지에 게임 규칙과 제약사항 추가
-            system_prompt = prompt_builder.system_prompt(self.role)
-
-            relevant_memories = self.memory_manager.get_recent_memories(
-                current_day=context.get("day_count")
+        # 컨텍스트 구성
+        if context.get("phase") == GamePhase.DAY_CONVERSATION:
+            user_prompt = prompt_builder.day_conversation_prompt(context, self.game_knowledge)
+        elif context.get("phase") == GamePhase.DAY_REASONING:
+            user_prompt = prompt_builder.day_reasoning_prompt(context, self.game_knowledge)
+        elif context.get("phase") == GamePhase.DAY_VOTE:
+            user_prompt = prompt_builder.day_vote_prompt(context, self.game_knowledge)
+        elif context.get("phase") == GamePhase.NIGHT_ACTION:
+            user_prompt = prompt_builder.night_action_prompt(
+                self.role, context, self.game_knowledge
             )
-            memories_prompt = "이전 기억:\n" + "\n".join(relevant_memories)
+        else:
+            raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-                {
-                    "role": "assistant",
-                    "content": memories_prompt,
-                },  # TODO: openai API의 구조에 맞게 messages 구성했는지 확인
-            ]
+        # 시스템 메시지에 게임 규칙과 제약사항 추가
+        system_prompt = prompt_builder.system_prompt(self.role)
 
-            # LLM 호출
-            try:
-                response = openai.ChatCompletion.create(
-                    model=self.ai_config["model"],
-                    messages=messages,
-                    temperature=self.ai_config["temperature"],
-                    max_tokens=self.ai_config["max_tokens"],
-                    presence_penalty=0.6,  # 반복 방지
-                    frequency_penalty=0.3,  # 다양성 유도
-                )
-                self.logger.info(response.choices[0].message.content)
-            except Exception as e:
-                raise Exception(f"LLM API 호출 실패: {str(e)}") from e
+        relevant_memories = self.memory_manager.get_recent_memories(
+            current_day=context.get("day_count")
+        )
+        memories_prompt = "이전 기억:\n" + "\n".join(relevant_memories)
 
-            # 응답 파싱 및 유효성 검증
-            parsed_response = self._parse_response(response.choices[0].message.content)
-            validated_response = self._validate_response(parsed_response, context)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+            {
+                "role": "assistant",
+                "content": memories_prompt,
+            },  # TODO: openai API의 구조에 맞게 messages 구성했는지 확인
+        ]
 
-            # 메모리 업데이트
-            self._update_memory(context, validated_response)
+        self.logger.info(messages)
 
-            return validated_response
+        # LLM 호출
+        response = self.llm_client.chat.completions.create(
+            model=self.ai_config["model"],
+            messages=messages,
+            temperature=self.ai_config["temperature"],
+            max_tokens=self.ai_config["max_tokens"],
+            presence_penalty=0.6,  # 반복 방지
+            frequency_penalty=0.3,  # 다양성 유도
+        )
+        self.logger.info(response.choices[0].message.content)
 
-        except Exception as e:
-            return {
-                "type": "error",
-                "content": str(e),
-                "fallback_action": self._get_fallback_action(context),
-            }
+        # 응답 파싱 및 유효성 검증
+        parsed_response = self._parse_response(response.choices[0].message.content)
+        validated_response = self._validate_response(parsed_response, context)
+
+        # 메모리 업데이트
+        self._update_memory(context, validated_response)
+
+        return validated_response
 
     def _parse_response(self, response: str) -> ActionType:
         """LLM 응답을 파싱하여 구조화된 형식으로 변환"""
-        try:
-            # 응답을 줄 단위로 분리
-            lines = response.strip().split("\n")
-            parsed_response = {"action": None, "target": None, "reason": None, "dialogue": None}
 
-            current_field = None
-            field_content = []
+        # 응답을 줄 단위로 분리
+        lines = response.strip().split("\n")
+        parsed_response = {"action": None, "target": None, "reason": None, "dialogue": None}
 
-            # 각 줄을 순회하며 파싱
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
+        current_field = None
+        field_content = []
 
-                # 필드 식별
-                if line.startswith("행동:"):
-                    if field_content and current_field:
-                        parsed_response[current_field] = "\n".join(field_content).strip()
-                    current_field = "action"
-                    field_content = [line.replace("행동:", "").strip()]
+        # 각 줄을 순회하며 파싱
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
 
-                elif line.startswith("대상:"):
-                    if field_content and current_field:
-                        parsed_response[current_field] = "\n".join(field_content).strip()
-                    current_field = "target"
-                    field_content = [line.replace("대상:", "").strip()]
+            # 필드 식별
+            if line.startswith("행동:"):
+                if field_content and current_field:
+                    parsed_response[current_field] = "\n".join(field_content).strip()
+                current_field = "action"
+                field_content = [line.replace("행동:", "").strip()]
 
-                elif line.startswith("이유:"):
-                    if field_content and current_field:
-                        parsed_response[current_field] = "\n".join(field_content).strip()
-                    current_field = "reason"
-                    field_content = [line.replace("이유:", "").strip()]
+            elif line.startswith("대상:"):
+                if field_content and current_field:
+                    parsed_response[current_field] = "\n".join(field_content).strip()
+                current_field = "target"
+                field_content = [line.replace("대상:", "").strip()]
 
-                elif line.startswith("대화:"):
-                    if field_content and current_field:
-                        parsed_response[current_field] = "\n".join(field_content).strip()
-                    current_field = "dialogue"
-                    field_content = [line.replace("대화:", "").strip()]
+            elif line.startswith("이유:"):
+                if field_content and current_field:
+                    parsed_response[current_field] = "\n".join(field_content).strip()
+                current_field = "reason"
+                field_content = [line.replace("이유:", "").strip()]
 
-                else:
-                    if current_field:
-                        field_content.append(line)
+            elif line.startswith("대화:"):
+                if field_content and current_field:
+                    parsed_response[current_field] = "\n".join(field_content).strip()
+                current_field = "dialogue"
+                field_content = [line.replace("대화:", "").strip()]
 
-            # 마지막 필드 처리
-            if field_content and current_field:
-                parsed_response[current_field] = "\n".join(field_content).strip()
+            else:
+                if current_field:
+                    field_content.append(line)
 
-            # 필수 필드 검증
-            if not parsed_response["action"]:
-                raise ValueError("행동이 지정되지 않았습니다")
+        # 마지막 필드 처리
+        if field_content and current_field:
+            parsed_response[current_field] = "\n".join(field_content).strip()
 
-            # 행동 타입 정규화
-            action_types = {
-                "투표": Action.VOTE,
-                "지목": Action.ACTION,
-                "조사": Action.ACTION,
-                "치료": Action.ACTION,
-                "대화": Action.DISCUSS,
-            }
-            parsed_response["action"] = action_types.get(
-                parsed_response["action"], parsed_response["action"]
-            )
+        # 필수 필드 검증
+        if not parsed_response["action"]:
+            raise ValueError("행동이 지정되지 않았습니다")
 
-            return {"type": "game_action", "content": parsed_response}
+        # 행동 타입 정규화
+        action_types = {
+            "투표": Action.VOTE,
+            "지목": Action.ACTION,
+            "조사": Action.ACTION,
+            "치료": Action.ACTION,
+            "대화": Action.DISCUSS,
+        }
+        parsed_response["action"] = action_types.get(
+            parsed_response["action"], parsed_response["action"]
+        )
 
-        except Exception as e:
-            # 파싱 실패 시 원본 응답을 그대로 반환
-            return {"type": "raw_response", "content": response, "error": str(e)}
+        return {"type": "game_action", "content": parsed_response}
+
 
     def _update_memory(self, context: ContextType, action: ActionType):
         """메모리 업데이트"""
@@ -253,32 +249,31 @@ class LLMAgent:
         Returns:
             생성된 대화 내용
         """
-        try:
-            # AI 응답 생성
-            response = self.generate_response(context)
-            if response.get("type") == "game_action" and response["content"].get("dialogue"):
-                # 대화 내용을 메모리에 저장 (직접 경험)
-                self.memory_manager.add_memory(
-                    {
-                        "type": MemoryType.CONVERSATION,
-                        "content": response["content"]["dialogue"],
-                        "turn": context.get("turn"),
-                        "phase": context.get("phase"),
-                        "players": [self.player_id],
-                        "source": "direct_experience",
-                    }
-                )
-                return response["content"]["dialogue"]
-            return ""
-        except Exception as e:
-            return "죄송합니다. 대화 생성 중 오류가 발생했습니다."
+        # AI 응답 생성
+        response = self.generate_response(context)
+        if response.get("type") == "game_action" and response["content"].get("dialogue"):
+            # 대화 내용을 메모리에 저장 (직접 경험)
+            self.memory_manager.add_memory(
+                {
+                    "type": MemoryType.CONVERSATION,
+                    "content": response["content"]["dialogue"],
+                    "turn": context.get("turn"),
+                    "phase": context.get("phase"),
+                    "players": [self.player_id],
+                    "source": "direct_experience",
+                }
+            )
+            return response["content"]["dialogue"]
+        return ""
 
 
 if __name__ == "__main__":
     # 테스트 코드
-    from memory_manager import MemoryManager
-    from enum import Role
-    from utils.enum import ContextType
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    # 로거 설정
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     memory_manager = MemoryManager()
     agent = LLMAgent(1, memory_manager, Role.MAFIA)

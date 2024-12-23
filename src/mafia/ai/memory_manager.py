@@ -1,4 +1,5 @@
 from typing import List
+
 from mafia.utils.enum import MemoryType
 
 
@@ -16,8 +17,7 @@ class MemoryManager:
     3. 관련 기억 검색
     """
 
-    def __init__(self, player_id: str):
-        self.player_id = player_id  # 이 메모리의 주인
+    def __init__(self):
         self.memories: List[MemoryType] = []
 
     def add_memory(self, memory: MemoryType):

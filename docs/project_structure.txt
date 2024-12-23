@@ -31,8 +31,3 @@ mafia
 │          config.py
 │          enum.py
 │          logger.py
-│
-└─tests
-    │  test_game_manager.py
-    │  test_players.py
-    │  __init__.py

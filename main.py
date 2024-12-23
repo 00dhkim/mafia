@@ -6,7 +6,7 @@ def main():
 
     game = GameManager()
     game.initialize_game()
-    game.run_game()
+    game.spin()
 
 if __name__ == "__main__":
     main() 

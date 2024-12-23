@@ -1,6 +1,6 @@
 from ai.llm_agent import LLMAgent
 from ai.memory_manager import MemoryManager
-from utils.enum import Role, ContextType
+from utils.enum import ActionType, GamePhase, MemoryType, Role, ContextType
 from utils.logger import game_logger
 
 from abc import ABC, abstractmethod
@@ -30,11 +30,7 @@ class BasePlayer(ABC):
         self.is_alive = True
         self.is_healed = False
         self.memory_manager = MemoryManager(player_id=name)
-        self.ai_agent = LLMAgent(
-            player_id=name, 
-            memory_manager=self.memory_manager,
-            role=self.role
-        )
+        self.ai_agent = LLMAgent(player_id=name, memory_manager=self.memory_manager, role=self.role)
         self.logger = game_logger
 
     def _validate_and_get_target(
@@ -58,16 +54,16 @@ class BasePlayer(ABC):
         """
         if not candidates:
             return None
-            
+
         # 자기 자신 제외
         if exclude_self:
             candidates = [c for c in candidates if name_selector(c) != self.name]
-            
+
         # 유효한 대상 찾기
         for candidate in candidates:
             if name_selector(candidate) in target_name:
                 return candidate
-                
+
         # 유효하지 않은 경우 경고 로그 출력 후 랜덤 선택
         self.logger.warning(
             f"[{self.role}] 유효하지 않은 대상 선택: {target_name}. "
@@ -76,72 +72,63 @@ class BasePlayer(ABC):
         return random.choice(candidates) if candidates else None
 
     @abstractmethod
-    def take_action(self, game_state: 'GameState') -> Dict:
+    def take_action(self, context: ContextType) -> ActionType:
         """
         게임 상태를 기반으로 플레이어의 행동을 결정하고 수행
-        
+
         Args:
             game_state (GameState): 현재 게임 상태 정보
-            
+
         Returns:
-            Dict: 수행한 행동의 결과
+            ActionType: 수행한 행동의 결과
         """
         raise NotImplementedError
 
-    def discuss(self, game_state: 'GameState') -> Dict:
-        """낮 페이즈 대화 수행"""
-        context = ContextType(
-            day_count=game_state.day_count,
-            phase="낮",
-            memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
-        )
-        message = self.ai_agent.generate_response(context)
-        
-        result = {
-            "success": True,
-            "message": message
-        }
-        
-        self.memory_manager.add_memory({
-            "action": "discuss",
-            "message": message,
-            "turn": game_state.day_count
-        })
-        
-        return result
+    # def discuss(self, game_state: 'GameState') -> Dict:
+    #     """낮 페이즈 대화 수행"""
+    #     context = ContextType(
+    #         day_count=game_state.day_count,
+    #         phase="낮",
+    #         memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
+    #     )
+    #     message = self.ai_agent.generate_response(context)
 
-    def vote(self, candidates: List[BasePlayer], game_state: 'GameState') -> str:
-        """투표 진행"""
-        if not candidates:
-            return ""
-            
-        context = ContextType(
-            day_count=game_state.day_count,
-            phase="투표",
-            alive_players=[p.name for p in candidates],
-            memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
-        )
-        
-        vote_target = self.ai_agent.generate_response(context)
-        
-        # 유효한 투표 대상 확인
-        for candidate in candidates:
-            if candidate.name in vote_target:
-                return candidate.name
-                
-        # 유효하지 않은 경우 랜덤 선택
-        import random
-        return random.choice(candidates).name
+    #     result = {
+    #         "success": True,
+    #         "message": message
+    #     }
 
-    def receive_public_info(self, info: Memory):
+    #     self.memory_manager.add_memory({
+    #         "action": "discuss",
+    #         "message": message,
+    #         "turn": game_state.day_count
+    #     })
+
+    #     return result
+
+    # def vote(self, candidates: List[BasePlayer], game_state: 'GameState') -> str:
+    #     """투표 진행"""
+    #     if not candidates:
+    #         return ""
+
+    #     context = ContextType(
+    #         day_count=game_state.day_count,
+    #         phase="투표",
+    #         alive_players=[p.name for p in candidates],
+    #         memories=self.memory_manager.get_recent_memories(current_day=game_state.day_count, days=3)
+    #     )
+
+    #     vote_target = self.ai_agent.generate_response(context)
+
+    #     # 유효한 투표 대상 확인
+    #     for candidate in candidates:
+    #         if candidate.name in vote_target:
+    #             return candidate.name
+
+    #     # 유효하지 않은 경우 랜덤 선택
+    #     import random
+    #     return random.choice(candidates).name
+
+    def receive_public_message(self, info: MemoryType):
         """공개 정보 수신 및 저장"""
         self.memory_manager.add_memory(info)
-    
-    def get_context(self) -> ContextType:
-        """현재 게임 상태 및 정보를 반환"""
-        return ContextType(
-            day_count=self.day_count,
-            phase=self.current_phase,
-            alive_players=[p.name for p in self.alive_players],
-            memories=self.memory_manager.get_recent_memories(self.day_count)
-        )

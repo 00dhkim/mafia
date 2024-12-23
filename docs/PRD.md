@@ -78,9 +78,9 @@ PRD(Product Requirements Document)
 ## TODO
 
 game_knowledge 객체의 업데이트 로직 추가
-시스템 메시지 추가 (receive_public_info의 이름 바꾸자)
 game_manager에 base_player의 discuss, vote 호출 로직 추가
 
-parsed_response, validated_response 함수 검증
-그리고 llm_agent 함수들 검증
+llm_agent.py의 _parse_response, _validate_response 함수 검증
+그리고 llm_agent.py의 함수들 검증
 player들에서 generate_response 호출하는 부분 읽어보고 구현
+game_manager.py는 initialize_game 아래부터 전부 읽자.

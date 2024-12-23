@@ -1,5 +1,7 @@
-from typing import TypedDict, List, Dict
+from typing import Literal, TypedDict, List, Dict
 from enum import Enum
+
+from players.base_player import BasePlayer
 
 names = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Hannah", "Ivy", "Jack"]
 
@@ -15,33 +17,40 @@ class Role(Enum):
     POLICE = "경찰"
     MAFIA = "마피아"
 
-class Action(Enum):
-    DISCUSS = "대화"
-    VOTE = "투표"
-    ACTION = "행동"
+
+class ActionType(TypedDict):
+    """액션 종류, 내용, 대상"""
+
+    type: Literal["discuss", "vote", "skill"]
+    target: BasePlayer
+    content: str  # 대화 내용 or 선택의 이유
+
+    def __repr__(self) -> str:
+        return f"ActionType(type={self.type}, target={self.target}, content={self.content})"
+
 
 class MemoryType(TypedDict):
     """메모리 객체 타입"""
     day: int                  # 게임 턴
     phase: GamePhase          # 게임 단계
-    speaker: str              # 발언자 (플레이어 및 시스템)
+    speaker: BasePlayer  # 발언자 (플레이어 및 사회자)
     content: str              # 내용
+
+    def __repr__(self) -> str:
+        return f"MemoryType(day={self.day}, phase={self.phase}, speaker={self.speaker}, content={self.content})"
+
 
 class GameStateType(TypedDict):
     """게임 상태 타입"""
+    day: int
     phase: GamePhase
-    day_count: int
-    alive_players: List[str]
-    dead_players: List[str]
-    vote_results: Dict[str, str]
-    last_killed_player: str
-    last_healed_player: str
-    last_investigated_player: str
+    alive_players: List[BasePlayer]
+    dead_players: List[BasePlayer]
+    vote_results: Dict[BasePlayer, BasePlayer]
 
 class ContextType(TypedDict):
     """컨텍스트 타입"""
-    day_count: int
+    day: int
     phase: GamePhase
-    alive_players: List[str]
+    alive_players: List[BasePlayer]
     memories: List[MemoryType]
-

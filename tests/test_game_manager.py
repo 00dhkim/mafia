@@ -84,14 +84,14 @@ def test_game_over_conditions(game_manager):
     result = game_manager.is_game_over()
     assert result["is_over"]
     assert result["winner"] == "시민"
-    
+
     # 마피아 승리 케이스
     game_manager = GameManager()  # 새 게임 시작
     game_manager.initialize_game()
     citizens = [p for p in game_manager.alive_players if not isinstance(p, Mafia)]
     for citizen in citizens[:-1]:  # 마피아와 시민 1명만 남김
-        game_manager.handle_death(citizen)
-    result = game_manager.is_game_over()
+        game_manager._handle_death(citizen)
+    result = game_manager._is_game_over()
     assert result["is_over"]
     assert result["winner"] == "마피아"
 

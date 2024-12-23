@@ -1,12 +1,12 @@
-from typing import List, Dict, Optional
 import openai
-
-from .ai import prompt_builder
-from .memory_manager import MemoryManager
 import random
-from .utils.config import game_config
-from .utils.enum import ActionType, GamePhase, Role, ContextType
-from .utils.logger import game_logger
+from typing import List, Dict, Optional
+
+from mafia.ai import prompt_builder
+from mafia.ai.memory_manager import MemoryManager
+from mafia.utils.config import game_config
+from mafia.utils.enum import ActionType, GamePhase, Role, ContextType
+from mafia.utils.logger import GameLogger
 
 
 class LLMAgent:
@@ -25,6 +25,7 @@ class LLMAgent:
     3. 역할별 특수 능력 사용
     4. 투표 결정
     """
+
     def __init__(self, player_id: int, memory_manager: MemoryManager, role: Role):
         assert isinstance(role, Role), "role must be an instance of Role"
 
@@ -72,7 +73,10 @@ class LLMAgent:
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
-                {"role": "assistant", "content": memories_prompt} #TODO: openai API의 구조에 맞게 messages 구성했는지 확인
+                {
+                    "role": "assistant",
+                    "content": memories_prompt,
+                },  # TODO: openai API의 구조에 맞게 messages 구성했는지 확인
             ]
 
             # LLM 호출
@@ -83,7 +87,7 @@ class LLMAgent:
                     temperature=self.ai_config["temperature"],
                     max_tokens=self.ai_config["max_tokens"],
                     presence_penalty=0.6,  # 반복 방지
-                    frequency_penalty=0.3   # 다양성 유도
+                    frequency_penalty=0.3,  # 다양성 유도
                 )
                 self.logger.info(response.choices[0].message.content)
             except Exception as e:
@@ -102,20 +106,15 @@ class LLMAgent:
             return {
                 "type": "error",
                 "content": str(e),
-                "fallback_action": self._get_fallback_action(context)
+                "fallback_action": self._get_fallback_action(context),
             }
 
     def _parse_response(self, response: str) -> ActionType:
         """LLM 응답을 파싱하여 구조화된 형식으로 변환"""
         try:
             # 응답을 줄 단위로 분리
-            lines = response.strip().split('\n')
-            parsed_response = {
-                "action": None,
-                "target": None,
-                "reason": None,
-                "dialogue": None
-            }
+            lines = response.strip().split("\n")
+            parsed_response = {"action": None, "target": None, "reason": None, "dialogue": None}
 
             current_field = None
             field_content = []
@@ -127,29 +126,29 @@ class LLMAgent:
                     continue
 
                 # 필드 식별
-                if line.startswith('행동:'):
+                if line.startswith("행동:"):
                     if field_content and current_field:
-                        parsed_response[current_field] = '\n'.join(field_content).strip()
-                    current_field = 'action'
-                    field_content = [line.replace('행동:', '').strip()]
+                        parsed_response[current_field] = "\n".join(field_content).strip()
+                    current_field = "action"
+                    field_content = [line.replace("행동:", "").strip()]
 
-                elif line.startswith('대상:'):
+                elif line.startswith("대상:"):
                     if field_content and current_field:
-                        parsed_response[current_field] = '\n'.join(field_content).strip()
-                    current_field = 'target'
-                    field_content = [line.replace('대상:', '').strip()]
+                        parsed_response[current_field] = "\n".join(field_content).strip()
+                    current_field = "target"
+                    field_content = [line.replace("대상:", "").strip()]
 
-                elif line.startswith('이유:'):
+                elif line.startswith("이유:"):
                     if field_content and current_field:
-                        parsed_response[current_field] = '\n'.join(field_content).strip()
-                    current_field = 'reason'
-                    field_content = [line.replace('이유:', '').strip()]
+                        parsed_response[current_field] = "\n".join(field_content).strip()
+                    current_field = "reason"
+                    field_content = [line.replace("이유:", "").strip()]
 
-                elif line.startswith('대화:'):
+                elif line.startswith("대화:"):
                     if field_content and current_field:
-                        parsed_response[current_field] = '\n'.join(field_content).strip()
-                    current_field = 'dialogue'
-                    field_content = [line.replace('대화:', '').strip()]
+                        parsed_response[current_field] = "\n".join(field_content).strip()
+                    current_field = "dialogue"
+                    field_content = [line.replace("대화:", "").strip()]
 
                 else:
                     if current_field:
@@ -157,10 +156,10 @@ class LLMAgent:
 
             # 마지막 필드 처리
             if field_content and current_field:
-                parsed_response[current_field] = '\n'.join(field_content).strip()
+                parsed_response[current_field] = "\n".join(field_content).strip()
 
             # 필수 필드 검증
-            if not parsed_response['action']:
+            if not parsed_response["action"]:
                 raise ValueError("행동이 지정되지 않았습니다")
 
             # 행동 타입 정규화
@@ -171,23 +170,15 @@ class LLMAgent:
                 "치료": Action.ACTION,
                 "대화": Action.DISCUSS,
             }
-            parsed_response['action'] = action_types.get(
-                parsed_response['action'],
-                parsed_response['action']
+            parsed_response["action"] = action_types.get(
+                parsed_response["action"], parsed_response["action"]
             )
 
-            return {
-                "type": "game_action",
-                "content": parsed_response
-            }
+            return {"type": "game_action", "content": parsed_response}
 
         except Exception as e:
             # 파싱 실패 시 원본 응답을 그대로 반환
-            return {
-                "type": "raw_response",
-                "content": response,
-                "error": str(e)
-            }
+            return {"type": "raw_response", "content": response, "error": str(e)}
 
     def _update_memory(self, context: ContextType, action: ActionType):
         """메모리 업데이트"""
@@ -195,7 +186,7 @@ class LLMAgent:
             "phase": context.get("phase"),
             "day": context.get("day_count"),
             "action": action,
-            "context": context
+            "context": context,
         }
         self.memory_manager.add_memory(memory)
 
@@ -227,13 +218,8 @@ class LLMAgent:
 
         # 행동 유효성 검증
         valid_actions = {
-            "밤": {
-                "마피아": ["지목"],
-                "의사": ["치료"],
-                "경찰": ["조사"],
-                "시민": ["대화"]
-            },
-            "낮": ["투표", "대화"]
+            "밤": {"마피아": ["지목"], "의사": ["치료"], "경찰": ["조사"], "시민": ["대화"]},
+            "낮": ["투표", "대화"],
         }
 
         # 페이즈별 가능한 행동인지 확인
@@ -260,10 +246,10 @@ class LLMAgent:
 
     def generate_conversation(self, context: ContextType) -> str:
         """대화 생성
-        
+
         Args:
             context: 현재 게임 상태 및 대화 컨텍스트
-            
+
         Returns:
             생성된 대화 내용
         """
@@ -272,14 +258,16 @@ class LLMAgent:
             response = self.generate_response(context)
             if response.get("type") == "game_action" and response["content"].get("dialogue"):
                 # 대화 내용을 메모리에 저장 (직접 경험)
-                self.memory_manager.add_memory({
-                    "type": MemoryType.CONVERSATION,
-                    "content": response["content"]["dialogue"],
-                    "turn": context.get("turn"),
-                    "phase": context.get("phase"),
-                    "players": [self.player_id],
-                    "source": "direct_experience"
-                })
+                self.memory_manager.add_memory(
+                    {
+                        "type": MemoryType.CONVERSATION,
+                        "content": response["content"]["dialogue"],
+                        "turn": context.get("turn"),
+                        "phase": context.get("phase"),
+                        "players": [self.player_id],
+                        "source": "direct_experience",
+                    }
+                )
                 return response["content"]["dialogue"]
             return ""
         except Exception as e:

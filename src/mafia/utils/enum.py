@@ -1,7 +1,7 @@
 from typing import Literal, TypedDict, List, Dict
 from enum import Enum
 
-from players.base_player import BasePlayer
+from mafia.players.base_player import BasePlayer
 
 names = ["Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Hannah", "Ivy", "Jack"]
 

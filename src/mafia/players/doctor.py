@@ -1,13 +1,12 @@
-from .base_player import BasePlayer
-from utils.enum import GameStateType, GamePhase
 from typing import Dict
 
-class Doctor(BasePlayer):
-    def __init__(self, name: str):
-        super().__init__(name)
-        self.role = "의사"
+from mafia.players.base_player import BasePlayer
+from mafia.utils.enum import ActionType, ContextType
 
-    def take_action(self, game_state: GameStateType) -> Dict:
+
+class Doctor(BasePlayer):
+
+    def take_action(self, context: ContextType) -> ActionType:
         """의사의 밤 행동 수행"""
         if game_state.current_phase != GamePhase.NIGHT_ACTION:
             return {"success": False, "message": "밤이 아닙니다"}

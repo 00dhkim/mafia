@@ -1,11 +1,11 @@
-from ai.llm_agent import LLMAgent
-from ai.memory_manager import MemoryManager
-from utils.enum import ActionType, GamePhase, MemoryType, Role, ContextType
-from utils.logger import game_logger
-
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List, TypeVar, Callable
 import random
+
+from mafia.ai.llm_agent import LLMAgent
+from mafia.ai.memory_manager import MemoryManager
+from mafia.utils.enum import ActionType, MemoryType, Role, ContextType
+from mafia.utils.logger import game_logger
 
 T = TypeVar('T')
 

@@ -1,15 +1,15 @@
-from typing import List, Dict, Literal, Optional
-from ai.llm_agent import LLMAgent
-from players.base_player import BasePlayer
-from players.citizen import Citizen
-from players.doctor import Doctor
-from players.police import Police
-from players.mafia import Mafia
-from utils.config import game_config
-from ai.memory_manager import MemoryType
 import random
-from utils.enum import ActionType, ContextType, GamePhase, GameStateType, Role, names
-from utils.logger import GameLogger
+from typing import List, Dict, Literal, Optional
+
+from mafia.ai.memory_manager import MemoryType
+from mafia.players.base_player import BasePlayer
+from mafia.players.citizen import Citizen
+from mafia.players.doctor import Doctor
+from mafia.players.police import Police
+from mafia.players.mafia import Mafia
+from mafia.utils.config import game_config
+from mafia.utils.enum import ActionType, ContextType, GamePhase, GameStateType, Role, names
+from mafia.utils.logger import GameLogger
 
 
 class GameManager:
@@ -48,7 +48,7 @@ class GameManager:
         self.last_investigated_player: Optional[BasePlayer] = None
         self.current_speaker = None
         self.logger = GameLogger()
-        self.announcer = BasePlayer("사회자", -1, None)
+        self.announcer = BasePlayer("사회자", -1, None)  # pylint: disable=E0110
 
     def initialize_game(self):
         """게임 초기화 및 역할 분배"""

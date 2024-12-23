@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from src.game.game_manager import GameManager
+from mafia.game.game_manager import GameManager
 
 def main():
     load_dotenv()
@@ -9,4 +9,4 @@ def main():
     game.spin()
 
 if __name__ == "__main__":
-    main() 
+    main()

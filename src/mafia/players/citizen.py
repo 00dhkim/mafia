@@ -1,13 +1,12 @@
-from .base_player import BasePlayer
-from utils.enum import GameStateType
 from typing import Dict
 
-class Citizen(BasePlayer):
-    def __init__(self, name: str):
-        super().__init__(name)
-        self.role = "시민"
+from mafia.players.base_player import BasePlayer
+from mafia.utils.enum import ActionType, ContextType
 
-    def take_action(self, game_state: GameStateType) -> Dict:
+
+class Citizen(BasePlayer):
+
+    def take_action(self, context: ContextType) -> ActionType:
         """시민의 전체 의사결정 프로세스"""
         # 시민은 특별한 행동이 없으므로, 대화만 수행
         context = self.memory_manager.get_recent_memories(game_state.day)

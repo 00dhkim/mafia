@@ -2,7 +2,7 @@
 LLM 모델에게 입력할 프롬프트를 문자열로 반환하는 함수들
 """
 from typing import Any
-from utils.enum import ContextType, GamePhase, Role
+from mafia.utils.enum import ContextType, GamePhase, Role
 
 
 def _rule_prompt():
@@ -175,5 +175,8 @@ def night_action_prompt(role: Role, context: ContextType, game_knowledge: dict[s
 응답 규칙:
 대상: [플레이어 이름]
 이유: [상세한 선택 이유]"""
+
+    else:
+        raise ValueError(f"올바르지 않은 역할입니다: {role}")
 
     return _context_prompt(context, game_knowledge) + "\n" + action_prompt

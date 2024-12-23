@@ -1,5 +1,5 @@
 from typing import List
-from utils.enum import MemoryType
+from mafia.utils.enum import MemoryType
 
 
 class MemoryManager:

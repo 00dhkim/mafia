@@ -70,7 +70,7 @@ class LLMAgent:
             raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
 
         # 시스템 메시지에 게임 규칙과 제약사항 추가
-        system_prompt = prompt_builder.system_prompt(self.role)
+        system_prompt = prompt_builder.system_prompt(name, self.role)
 
         relevant_memories = self.memory_manager.get_recent_memories(
             current_day=context.get("day_count")

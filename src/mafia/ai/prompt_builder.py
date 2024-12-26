@@ -100,11 +100,15 @@ def day_conversation_prompt(context: ContextType, game_knowledge: dict[str, Any]
 
     conversation_prompt = """현재는 '낮 대화' 페이즈입니다.
 
-응답 규칙:
+고려사항:
 1. 자유롭게 발언하세요
 2. 어제 밤의 사건에 대해 분석하세요
 3. 의심스러운 행동을 한 플레이어를 지적하세요
-4. 자신의 의견을 논리적으로 설명하세요"""
+4. 자신의 의견을 논리적으로 설명하세요
+
+응답 규칙:
+[이름]: [발언]
+"""
 
     return _context_prompt(context, game_knowledge) + "\n\n" + conversation_prompt
 

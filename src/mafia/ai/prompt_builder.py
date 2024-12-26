@@ -108,7 +108,7 @@ def day_reasoning_prompt(context: ContextType, game_knowledge: dict[str, Any]):
 # TODO: known_roles, suspicious_players, trusted_players
 """
 
-    raise NotImplementedError
+    # raise NotImplementedError
     return _context_prompt(context, game_knowledge) + "\n" + reasoning_prompt
 
 ###################################
@@ -180,3 +180,85 @@ def night_action_prompt(role: Role, context: ContextType, game_knowledge: dict[s
         raise ValueError(f"올바르지 않은 역할입니다: {role}")
 
     return _context_prompt(context, game_knowledge) + "\n" + action_prompt
+
+
+def generate_prompt_examples():
+    examples = {
+        "system prompt": system_prompt(Role.CITIZEN),
+        GamePhase.DAY_CONVERSATION: day_conversation_prompt(
+            {
+                "phase": GamePhase.DAY_CONVERSATION,
+                "day_count": 1,
+                "alive_players": ["Alice", "Bob", "Charlie", "David"],
+            },
+            {"known_roles": {}, "suspicious_players": [], "trusted_players": []},
+        ),
+        GamePhase.DAY_REASONING: day_reasoning_prompt(
+            {
+                "phase": GamePhase.DAY_REASONING,
+                "day_count": 1,
+                "alive_players": ["Alice", "Bob", "Charlie", "David"],
+            },
+            {"known_roles": {}, "suspicious_players": [], "trusted_players": []},
+        ),
+        GamePhase.DAY_VOTE: day_vote_prompt(
+            {
+                "phase": GamePhase.DAY_VOTE,
+                "day_count": 1,
+                "alive_players": ["Alice", "Bob", "Charlie", "David"],
+            },
+            {"known_roles": {}, "suspicious_players": [], "trusted_players": []},
+        ),
+        GamePhase.NIGHT_ACTION: night_action_prompt(
+            Role.POLICE,
+            {
+                "phase": GamePhase.NIGHT_ACTION,
+                "day_count": 1,
+                "alive_players": ["Alice", "Bob", "Charlie", "David"],
+            },
+            {"known_roles": {}, "suspicious_players": [], "trusted_players": []},
+        ),
+    }
+
+    with open("/workspaces/mafia/docs/prompt_examples.md", "w", encoding="utf-8") as f:
+        f.write("# 각 페이즈 별 프롬프트 예시\n\n")
+
+        for phase, prompt in examples.items():
+            f.write(f"## {phase}\n\n")
+            f.write("- 입력\n")
+            f.write("```\n")
+            f.write(prompt)
+            f.write("\n```\n\n")
+
+            if phase == GamePhase.DAY_CONVERSATION:
+                f.write("- 출력\n")
+                f.write("```\n")
+                f.write(
+                    "저는 아직 누구를 믿어야 할지 모르겠어요. 더 많은 정보를 얻어야 할 것 같아요.\n"
+                )
+                f.write("```\n\n")
+            if phase == GamePhase.DAY_REASONING:
+                f.write("- 출력\n")
+                f.write("```\n")
+                f.write("TODO:\n")
+                f.write("```\n\n")
+            elif phase == GamePhase.DAY_VOTE:
+                f.write("- 출력\n")
+                f.write("```\n")
+                f.write("대상: Alice\n")
+                f.write(
+                    "이유: Alice가 낮 대화에서 다른 사람들을 의심하는 발언을 많이 했기 때문에 그녀가 마피아일 가능성이 높다고 생각합니다.\n"
+                )
+                f.write("```\n\n")
+            elif phase == GamePhase.NIGHT_ACTION:
+                f.write("- 출력\n")
+                f.write("```\n")
+                f.write("대상: Bob\n")
+                f.write(
+                    "이유: Bob이 낮 대화에서 말이 많지 않았고, 다른 사람들의 발언을 잘 듣고 있었기 때문에 Bob을 조사하기로 결정했습니다.\n"
+                )
+                f.write("```\n\n")
+
+
+if __name__ == "__main__":
+    generate_prompt_examples()

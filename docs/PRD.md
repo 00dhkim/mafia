@@ -85,7 +85,7 @@ llm_agent.py의 _parse_response, _validate_response 함수 검증
 player들에서 generate_response 호출하는 부분 읽어보고 구현
 game_manager.py는 initialize_game 아래부터 전부 읽자.
 
-prompt_builder.py 에서 출력을 json 형태로 하도록 강제하자: https://chatgpt.com/c/676d15cf-b650-800d-915f-c36a7983beb4
+prompt_builder.py 에서 출력을 json 형태로 하도록 강제하자: https://chatgpt.com/c/676d15cf-b650-800d-915f-c36a7983beb4, https://platform.openai.com/docs/guides/structured-outputs
 
 ## 확장성
 

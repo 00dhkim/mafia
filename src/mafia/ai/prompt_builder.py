@@ -9,8 +9,8 @@ def _rule_prompt():
     return """당신은 마피아 게임의 플레이어입니다.
 
 게임 기본 규칙:
-- 모든 플레이어는 대화와 특수 능력을 통해 팀의 목표를 이뤄야 합니다.
-- 게임은 마피아(1명), 의사(1명), 경찰(1명), 시민(1명)으로 구성되며, 마피아는 마피아팀, 그 외의 직업은 시민팀에 속합니다.
+- 모든 플레이어는 대화와 특수 능력을 통해 각자의 팀을 승리하도록 이끌어야 합니다.
+- 게임은 마피아(1명), 의사(1명), 경찰(1명), 시민(1명)의 플레이어로 구성되며, 마피아는 마피아팀, 그 외의 직업은 시민팀에 속합니다.
 - 마피아팀은 시민의 수가 1명이 되면 승리하며, 시민팀은 마피아를 찾아내어 제거하면 승리합니다.
 - 게임은 '낮 대화', '낮 추리', '낮 투표', '밤 행동' 페이즈를 반복하여 진행됩니다.
 - '낮 대화' 페이즈에는 각 플레이어가 자신의 역할을 숨기고 다른 플레이어들과 대화를 나눕니다.
@@ -20,7 +20,7 @@ def _rule_prompt():
 
 행동 양식:
 - 자신의 역할을 기본적으로 숨기는 것이 좋습니다.
-- 다른 플레이어들의 발언을 관찰하고 분석하세요.
+- 다른 플레이어들의 발언과 이전 기억들을 관찰하고 분석하세요.
 - 논리적인 추론을 통해 의사결정을 하세요.
 - 게임의 흐름을 고려하여 전략적으로 행동하세요."""
 
@@ -89,7 +89,7 @@ def _context_prompt(context: ContextType, game_knowledge: dict[str, Any]):
 - 신뢰할 수 있는 플레이어: {', '.join(game_knowledge.get('trusted_players', []))}"""
 
 
-def system_prompt(name: str, role: Role):
+def developer_prompt(name: str, role: Role):
     return _rule_prompt() + "\n\n" + _role_prompt(name, role)
 
 
@@ -193,7 +193,7 @@ def generate_prompt_examples():
     }
 
     examples = {
-        "system prompt": system_prompt(name, role),
+        "developer prompt": developer_prompt(name, role),
         GamePhase.DAY_CONVERSATION: day_conversation_prompt(
             {
                 "phase": GamePhase.DAY_CONVERSATION,

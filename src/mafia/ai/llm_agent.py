@@ -70,7 +70,7 @@ class LLMAgent:
             raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
 
         # 시스템 메시지에 게임 규칙과 제약사항 추가
-        system_prompt = prompt_builder.system_prompt(name, self.role)
+        developer_prompt = prompt_builder.developer_prompt(name, self.role)
 
         relevant_memories = self.memory_manager.get_recent_memories(
             current_day=context.get("day_count")
@@ -78,12 +78,9 @@ class LLMAgent:
         memories_prompt = "이전 기억:\n" + "\n".join(relevant_memories)
 
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "developer", "content": developer_prompt},
+            {"role": "assistant", "content": memories_prompt},
             {"role": "user", "content": user_prompt},
-            {
-                "role": "assistant",
-                "content": memories_prompt,
-            },  # TODO: openai API의 구조에 맞게 messages 구성했는지 확인
         ]
 
         self.logger.info(messages)
@@ -174,7 +171,6 @@ class LLMAgent:
         )
 
         return {"type": "game_action", "content": parsed_response}
-
 
     def _update_memory(self, context: ContextType, action: ActionType):
         """메모리 업데이트"""

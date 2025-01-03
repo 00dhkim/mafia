@@ -29,11 +29,12 @@ class LLMAgent:
     4. 투표 결정
     """
 
-    def __init__(self, player_id: int, memory_manager: MemoryManager, role: Role):
+    def __init__(self, player_id: int, memory_manager: MemoryManager, role: Role, name: str):
         assert isinstance(role, Role), "role must be an instance of Role"
 
         self.player_id = player_id
         self.role = role
+        self.name = name
         self.memory_manager = memory_manager
         self.game_knowledge = {
             "known_roles": {},  # 확인된 다른 플레이어의 역할
@@ -57,20 +58,22 @@ class LLMAgent:
         """
         # 컨텍스트 구성
         if context.get("phase") == GamePhase.DAY_CONVERSATION:
-            user_prompt = prompt_builder.day_conversation_prompt(context, self.game_knowledge)
+            user_prompt, Schema = prompt_builder.day_conversation_prompt(
+                context, self.game_knowledge
+            )
         elif context.get("phase") == GamePhase.DAY_REASONING:
-            user_prompt = prompt_builder.day_reasoning_prompt(context, self.game_knowledge)
+            user_prompt, Schema = prompt_builder.day_reasoning_prompt(context, self.game_knowledge)
         elif context.get("phase") == GamePhase.DAY_VOTE:
-            user_prompt = prompt_builder.day_vote_prompt(context, self.game_knowledge)
+            user_prompt, Schema = prompt_builder.day_vote_prompt(context, self.game_knowledge)
         elif context.get("phase") == GamePhase.NIGHT_ACTION:
-            user_prompt = prompt_builder.night_action_prompt(
+            user_prompt, Schema = prompt_builder.night_action_prompt(
                 self.role, context, self.game_knowledge
             )
         else:
             raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
 
         # 시스템 메시지에 게임 규칙과 제약사항 추가
-        developer_prompt = prompt_builder.developer_prompt(name, self.role)
+        developer_prompt = prompt_builder.developer_prompt(self.name, self.role)
 
         relevant_memories = self.memory_manager.get_recent_memories(
             current_day=context.get("day_count")
@@ -78,99 +81,53 @@ class LLMAgent:
         memories_prompt = "이전 기억:\n" + "\n".join(relevant_memories)
 
         messages = [
-            {"role": "developer", "content": developer_prompt},
+            {"role": "developer", "content": developer_prompt + user_prompt},
             {"role": "assistant", "content": memories_prompt},
-            {"role": "user", "content": user_prompt},
         ]
 
         self.logger.info(messages)
 
         # LLM 호출
-        response = self.llm_client.chat.completions.create(
+        # response = self.llm_client.chat.completions.create(
+        #     model=self.ai_config["model"],
+        #     messages=messages,
+        #     temperature=self.ai_config["temperature"],
+        #     max_tokens=self.ai_config["max_tokens"],
+        #     presence_penalty=0.6,  # 반복 방지
+        #     frequency_penalty=0.3,  # 다양성 유도
+        # )
+        completion = self.llm_client.beta.chat.completions.parse(
             model=self.ai_config["model"],
             messages=messages,
-            temperature=self.ai_config["temperature"],
-            max_tokens=self.ai_config["max_tokens"],
-            presence_penalty=0.6,  # 반복 방지
-            frequency_penalty=0.3,  # 다양성 유도
+            response_format=Schema,
         )
-        self.logger.info(response.choices[0].message.content)
+        response = completion.choices[0].message
+        if response.refusal:
+            raise ValueError("LLM이 응답을 거부했습니다:", response.refusal)
 
-        # 응답 파싱 및 유효성 검증
-        parsed_response = self._parse_response(response.choices[0].message.content)
-        validated_response = self._validate_response(parsed_response, context)
+        self.logger.info(repr(response.parsed))
 
         # 메모리 업데이트
-        self._update_memory(context, validated_response)
+        if context.get("phase") == GamePhase.DAY_CONVERSATION:
+            type_ = "discuss"
+        elif context.get("phase") == GamePhase.DAY_VOTE:
+            type_ = "vote"
+        elif context.get("phase") == GamePhase.NIGHT_ACTION:
+            type_ = "skill"
+        else:
+            raise ValueError(f"유효하지 않은 게임 페이즈입니다: {context.get('phase')}")
 
-        return validated_response
+        target = getattr(response.parsed, "target", None)
+        content = getattr(response.parsed, "conversation", None)
 
-    def _parse_response(self, response: str) -> ActionType:
-        """LLM 응답을 파싱하여 구조화된 형식으로 변환"""
-
-        # 응답을 줄 단위로 분리
-        lines = response.strip().split("\n")
-        parsed_response = {"action": None, "target": None, "reason": None, "dialogue": None}
-
-        current_field = None
-        field_content = []
-
-        # 각 줄을 순회하며 파싱
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            # 필드 식별
-            if line.startswith("행동:"):
-                if field_content and current_field:
-                    parsed_response[current_field] = "\n".join(field_content).strip()
-                current_field = "action"
-                field_content = [line.replace("행동:", "").strip()]
-
-            elif line.startswith("대상:"):
-                if field_content and current_field:
-                    parsed_response[current_field] = "\n".join(field_content).strip()
-                current_field = "target"
-                field_content = [line.replace("대상:", "").strip()]
-
-            elif line.startswith("이유:"):
-                if field_content and current_field:
-                    parsed_response[current_field] = "\n".join(field_content).strip()
-                current_field = "reason"
-                field_content = [line.replace("이유:", "").strip()]
-
-            elif line.startswith("대화:"):
-                if field_content and current_field:
-                    parsed_response[current_field] = "\n".join(field_content).strip()
-                current_field = "dialogue"
-                field_content = [line.replace("대화:", "").strip()]
-
-            else:
-                if current_field:
-                    field_content.append(line)
-
-        # 마지막 필드 처리
-        if field_content and current_field:
-            parsed_response[current_field] = "\n".join(field_content).strip()
-
-        # 필수 필드 검증
-        if not parsed_response["action"]:
-            raise ValueError("행동이 지정되지 않았습니다")
-
-        # 행동 타입 정규화
-        action_types = {
-            "투표": Action.VOTE,
-            "지목": Action.ACTION,
-            "조사": Action.ACTION,
-            "치료": Action.ACTION,
-            "대화": Action.DISCUSS,
-        }
-        parsed_response["action"] = action_types.get(
-            parsed_response["action"], parsed_response["action"]
+        action = ActionType(
+            type=type_,
+            target=target,
+            content=content,
         )
+        self._update_memory(context, action)
 
-        return {"type": "game_action", "content": parsed_response}
+        return str(response.parsed)  # FIXME:
 
     def _update_memory(self, context: ContextType, action: ActionType):
         """메모리 업데이트"""
@@ -183,6 +140,7 @@ class LLMAgent:
         self.memory_manager.add_memory(memory)
 
     def update_knowledge(self, new_information: Dict):
+        # TODO:
         """게임 정보 업데이트"""
         if "role_reveal" in new_information:
             player = new_information["player"]
@@ -199,71 +157,14 @@ class LLMAgent:
             if player not in self.game_knowledge["trusted_players"]:
                 self.game_knowledge["trusted_players"].append(player)
 
-    def _validate_response(self, response: Dict, context: ContextType) -> Dict:
-        """응답의 유효성 검증"""
-        if response["type"] == "raw_response":
-            return response
-
-        content = response["content"]
-        alive_players = context.get("alive_players", [])
-        phase = context.get("phase", "")
-
-        # 행동 유효성 검증
-        valid_actions = {
-            "밤": {"마피아": ["지목"], "의사": ["치료"], "경찰": ["조사"], "시민": ["대화"]},
-            "낮": ["투표", "대화"],
-        }
-
-        # 페이즈별 가능한 행동인지 확인
-        if phase == "밤":
-            allowed_actions = valid_actions["밤"].get(self.role, [])
-        else:
-            allowed_actions = valid_actions["낮"]
-
-        if content["action"] not in allowed_actions:
-            raise ValueError(f"현재 페이즈에서 불가능한 행동입니다: {content['action']}")
-
-        # 대상 플레이어 유효성 검증
-        if content["action"] != "대화" and content["target"]:
-            if content["target"] not in alive_players:
-                raise ValueError(f"존재하지 않는 플레이어입니다: {content['target']}")
-            if content["target"] == self.player_id and self.role != "의사":
-                raise ValueError("자신을 대상으로 지정할 수 없습니다")
-
-        return response
-
     def _get_fallback_action(self, context: ContextType) -> Dict:
         """오류 발생 시 기본 행동 반환"""
         raise NotImplementedError
 
-    def generate_conversation(self, context: ContextType) -> str:
-        """대화 생성
-
-        Args:
-            context: 현재 게임 상태 및 대화 컨텍스트
-
-        Returns:
-            생성된 대화 내용
-        """
-        # AI 응답 생성
-        response = self.generate_response(context)
-        if response.get("type") == "game_action" and response["content"].get("dialogue"):
-            # 대화 내용을 메모리에 저장 (직접 경험)
-            self.memory_manager.add_memory(
-                {
-                    "type": MemoryType.CONVERSATION,
-                    "content": response["content"]["dialogue"],
-                    "turn": context.get("turn"),
-                    "phase": context.get("phase"),
-                    "players": [self.player_id],
-                    "source": "direct_experience",
-                }
-            )
-            return response["content"]["dialogue"]
-        return ""
-
 
 if __name__ == "__main__":
+    from mafia.players.citizen import Citizen
+
     # 테스트 코드
     from dotenv import load_dotenv
     load_dotenv()
@@ -271,16 +172,19 @@ if __name__ == "__main__":
     # 로거 설정
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    memory_manager = MemoryManager()
-    agent = LLMAgent(1, memory_manager, Role.MAFIA)
+    memory_manager = MemoryManager(name="Alice")
+    agent = LLMAgent(1, memory_manager, Role.MAFIA, "Alice")
 
     context = ContextType(
         day=1,
         phase=GamePhase.DAY_CONVERSATION,
-        alive_players=[1, 2, 3, 4, 5],
+        alive_players=[
+            Citizen("Alice", 1, Role.CITIZEN),
+            Citizen("Bob", 2, Role.CITIZEN),
+            Citizen("Charlie", 3, Role.CITIZEN),
+            Citizen("David", 4, Role.MAFIA),
+        ],
         memories=[],
     )
     response = agent.generate_response(context)
     print(response)
-    conversation = agent.generate_conversation(context)
-    print(conversation)

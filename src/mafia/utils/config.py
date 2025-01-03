@@ -16,35 +16,26 @@ class GameConfig:
     3. AI 설정 관리
     """
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._load_initial_config()
         return cls._instance
-    
+
     def _load_initial_config(self):
         """초기 설정 로드"""
         self.config: Dict = {
-            "roles": {
-                "mafia": 1,
-                "doctor": 1,
-                "police": 1,
-                "citizen": 1
-            },
+            "roles": {"mafia": 1, "doctor": 1, "police": 1, "citizen": 1},
             "game_settings": {
                 "day_time_limit": 300,  # 낮 시간 제한 (초)
                 "night_time_limit": 60,  # 밤 시간 제한 (초)
-                "vote_time_limit": 60,   # 투표 시간 제한 (초)
+                "vote_time_limit": 60,  # 투표 시간 제한 (초)
             },
-            "ai_settings": {
-                "model": "gpt-3.5-turbo",
-                "temperature": 0.7,
-                "max_tokens": 150
-            }
+            "ai_settings": {"model": "gpt-4o-mini", "temperature": 0.7, "max_tokens": 150},
         }
         self.load_config()
-    
+
     def load_config(self):
         """설정 파일 로드"""
         config_path = Path("config/game_config.json")
@@ -55,7 +46,7 @@ class GameConfig:
         except Exception as e:
             print(f"설정 파일 로드 실패: {e}")
             # 기본값 사용
-            
+
     def get_config(self, key: str):
         """설정값 조회"""
         return self.config.get(key)

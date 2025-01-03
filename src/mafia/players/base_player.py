@@ -29,8 +29,10 @@ class BasePlayer(ABC):
         self.role = role
         self.is_alive = True
         self.is_healed = False
-        self.memory_manager = MemoryManager(player_id=name)
-        self.ai_agent = LLMAgent(player_id=name, memory_manager=self.memory_manager, role=self.role)
+        self.memory_manager = MemoryManager(name=name)
+        self.ai_agent = LLMAgent(
+            player_id=player_id, memory_manager=self.memory_manager, role=role, name=name
+        )
         self.logger = game_logger
 
     def _validate_and_get_target(

@@ -17,8 +17,9 @@ class MemoryManager:
     3. 관련 기억 검색
     """
 
-    def __init__(self):
+    def __init__(self, name: str):
         self.memories: List[MemoryType] = []
+        self.name = name
 
     def add_memory(self, memory: MemoryType):
         """새로운 기억 추가
